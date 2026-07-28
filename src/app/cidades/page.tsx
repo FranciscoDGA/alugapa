@@ -1,1 +1,1 @@
-export default function Page() { return <main className='p-8 min-h-screen'><h1>P�gina: cidades</h1></main> }
+﻿export default function Page() { return <main className='p-8 min-h-screen'><h1>Página: cidades</h1></main> }
