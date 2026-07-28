@@ -22,20 +22,34 @@ async function main() {
   const empresa1 = await prisma.company.create({
     data: {
       name: 'Energia Locações',
+      slug: 'energia-locacoes',
+      about: 'Especialistas em locação de geradores silenciados de alta capacidade para eventos e obras. Atendemos todo o estado com rapidez e eficiência.',
       city: 'São Paulo',
       state: 'SP',
+      logoUrl: 'https://placehold.co/150x150/003366/FFF?text=EL',
+      coverUrl: 'https://images.unsplash.com/photo-1541888086425-d81bb19240f5?q=80&w=2070&auto=format&fit=crop',
       verified: true,
       plan: 'PRO',
       rating: 4.9,
       yearsInMarket: 2,
+      reviews: {
+        create: [
+          { rating: 5, authorName: 'Construtora Alpha', comment: 'Equipamento excelente e entrega no prazo.' },
+          { rating: 5, authorName: 'Eventos SP', comment: 'Gerador super silencioso, salvou nosso evento.' }
+        ]
+      }
     },
   })
 
   const empresa2 = await prisma.company.create({
     data: {
       name: 'TratorMax Pesados',
+      slug: 'tratormax-pesados',
+      about: 'Referência em máquinas pesadas na região Norte. Temos escavadeiras, pás carregadeiras e muito mais.',
       city: 'Marabá',
       state: 'PA',
+      logoUrl: 'https://placehold.co/150x150/FF9900/FFF?text=TM',
+      coverUrl: 'https://images.unsplash.com/photo-1574889241973-1fcfbf5fbe3d?q=80&w=2070&auto=format&fit=crop',
       verified: true,
       plan: 'ESSENTIAL',
       rating: 4.7,

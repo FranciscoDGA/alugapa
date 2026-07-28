@@ -9,12 +9,14 @@ datasource db {
 
 model Company {
   id             String    @id @default(uuid())
+  slug           String    @unique
   name           String
   cnpj           String?
+  about          String?   // Historia da empresa
   city           String
   state          String
   logoUrl        String?
-  bannerUrl      String?
+  coverUrl       String?   // Banner
   verified       Boolean   @default(false)
   plan           String    @default("FREE") // FREE, ESSENTIAL, PRO, ENTERPRISE
   rating         Float     @default(0)
@@ -23,6 +25,18 @@ model Company {
   updatedAt      DateTime  @updatedAt
 
   listings       Listing[]
+  reviews        Review[]
+}
+
+model Review {
+  id             String    @id @default(uuid())
+  rating         Int
+  comment        String?
+  authorName     String
+  createdAt      DateTime  @default(now())
+
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id])
 }
 
 model Category {
