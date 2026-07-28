@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Company {
+  id             String    @id @default(uuid())
+  name           String
+  cnpj           String?
+  city           String
+  state          String
+  logoUrl        String?
+  bannerUrl      String?
+  verified       Boolean   @default(false)
+  plan           String    @default("FREE") // FREE, ESSENTIAL, PRO, ENTERPRISE
+  rating         Float     @default(0)
+  yearsInMarket  Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  listings       Listing[]
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  icon        String?
+  
+  listings    Listing[]
+}
+
+model Listing {
+  id               String    @id @default(uuid())
+  title            String
+  slug             String    @unique
+  shortDescription String
+  fullDescription  String?
+  type             String    // EQUIPMENT, SERVICE
+  city             String
+  state            String
+  price            Float?
+  priceOnRequest   Boolean   @default(false)
+  status           String    @default("ACTIVE") // ACTIVE, DRAFT, ARCHIVED
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  companyId        String
+  company          Company   @relation(fields: [companyId], references: [id])
+  
+  categoryId       String
+  category         Category  @relation(fields: [categoryId], references: [id])
+}
