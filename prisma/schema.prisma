@@ -26,6 +26,7 @@ model Company {
 
   listings       Listing[]
   reviews        Review[]
+  leads          Lead[]
 }
 
 model Review {
@@ -68,4 +69,25 @@ model Listing {
   
   categoryId       String
   category         Category  @relation(fields: [categoryId], references: [id])
+  
+  leads            Lead[]
+}
+
+model Lead {
+  id               String    @id @default(uuid())
+  name             String
+  email            String?
+  phone            String
+  city             String?
+  message          String
+  status           String    @default("NOVO") // NOVO, CONTATO, PROPOSTA, NEGOCIACAO, FECHADO, PERDIDO
+  source           String    @default("ORGANICO") // ORGANICO, ADS, DIRETO
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  companyId        String
+  company          Company   @relation(fields: [companyId], references: [id])
+
+  listingId        String?
+  listing          Listing?  @relation(fields: [listingId], references: [id])
 }

@@ -37,6 +37,13 @@ async function main() {
           { rating: 5, authorName: 'Construtora Alpha', comment: 'Equipamento excelente e entrega no prazo.' },
           { rating: 5, authorName: 'Eventos SP', comment: 'Gerador super silencioso, salvou nosso evento.' }
         ]
+      },
+      leads: {
+        create: [
+          { name: 'João Silva', phone: '11999999999', email: 'joao@construtora.com', city: 'São Paulo', message: 'Preciso de um gerador para amanhã, urgente.', status: 'NOVO' },
+          { name: 'Maria Souza', phone: '11988888888', city: 'Campinas', message: 'Orçamento para locação mensal.', status: 'CONTATO' },
+          { name: 'Carlos Santos', phone: '11977777777', email: 'carlos@eventos.com', city: 'Osasco', message: 'Qual o valor para final de semana?', status: 'PROPOSTA' }
+        ]
       }
     },
   })
