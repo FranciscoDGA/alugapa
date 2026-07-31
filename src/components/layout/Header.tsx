@@ -23,16 +23,17 @@ export default function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-8">
-          <Link href="/buscar" className="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">
-            Encontrar Máquinas
+          <Link href="/empresas" className="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">
+            Encontrar Empresas
           </Link>
-          <div className="group relative cursor-pointer">
-            <div className="flex items-center gap-1 text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">
-              Categorias <ChevronDown size={16} />
-            </div>
-          </div>
-          <Link href="/anunciar" className="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">
-            Para Empresas
+          <Link href="/buscar" className="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">
+            Encontrar Equipamentos
+          </Link>
+          <Link href="/categorias" className="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">
+            Categorias
+          </Link>
+          <Link href="/como-funciona" className="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">
+            Como Funciona
           </Link>
         </nav>
 
@@ -77,11 +78,17 @@ export default function Header() {
             className="fixed inset-0 top-20 bg-white z-40 lg:hidden overflow-y-auto"
           >
             <div className="flex flex-col p-6 gap-6">
-              <Link href="/buscar" className="text-xl font-bold text-gray-900" onClick={() => setIsMobileMenuOpen(false)}>
-                Buscar Equipamentos
+              <Link href="/empresas" className="text-xl font-bold text-gray-900" onClick={() => setIsMobileMenuOpen(false)}>
+                Encontrar Empresas
               </Link>
-              <Link href="/anunciar" className="text-xl font-bold text-gray-900" onClick={() => setIsMobileMenuOpen(false)}>
-                Para Empresas
+              <Link href="/buscar" className="text-xl font-bold text-gray-900" onClick={() => setIsMobileMenuOpen(false)}>
+                Encontrar Equipamentos
+              </Link>
+              <Link href="/categorias" className="text-xl font-bold text-gray-900" onClick={() => setIsMobileMenuOpen(false)}>
+                Categorias
+              </Link>
+              <Link href="/como-funciona" className="text-xl font-bold text-gray-900" onClick={() => setIsMobileMenuOpen(false)}>
+                Como Funciona
               </Link>
               <hr className="border-gray-100" />
               <Link href="/login" className="text-xl font-bold text-gray-600" onClick={() => setIsMobileMenuOpen(false)}>

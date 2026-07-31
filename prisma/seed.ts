@@ -1,107 +1,74 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...')
+  console.log('🌱 Iniciando Seed da Sprint 02 (Zero Mock -> Real Data)');
 
-  // 1. Criar Categorias
-  const catEnergia = await prisma.category.upsert({
-    where: { slug: 'energia' },
+  // 1. Estados
+  const para = await prisma.state.upsert({
+    where: { uf: 'PA' },
     update: {},
-    create: { name: 'Energia', slug: 'energia', icon: 'Zap' },
-  })
+    create: {
+      name: 'Pará',
+      uf: 'PA',
+      slug: 'para',
+    },
+  });
 
-  const catConstrucao = await prisma.category.upsert({
-    where: { slug: 'construcao' },
+  const saoPaulo = await prisma.state.upsert({
+    where: { uf: 'SP' },
     update: {},
-    create: { name: 'Construção', slug: 'construcao', icon: 'Pickaxe' },
-  })
-
-  // 2. Criar Empresas
-  const empresa1 = await prisma.company.create({
-    data: {
-      name: 'Energia Locações',
-      slug: 'energia-locacoes',
-      about: 'Especialistas em locação de geradores silenciados de alta capacidade para eventos e obras. Atendemos todo o estado com rapidez e eficiência.',
-      city: 'São Paulo',
-      state: 'SP',
-      logoUrl: 'https://placehold.co/150x150/003366/FFF?text=EL',
-      coverUrl: 'https://images.unsplash.com/photo-1541888086425-d81bb19240f5?q=80&w=2070&auto=format&fit=crop',
-      verified: true,
-      plan: 'PRO',
-      rating: 4.9,
-      yearsInMarket: 2,
-      reviews: {
-        create: [
-          { rating: 5, authorName: 'Construtora Alpha', comment: 'Equipamento excelente e entrega no prazo.' },
-          { rating: 5, authorName: 'Eventos SP', comment: 'Gerador super silencioso, salvou nosso evento.' }
-        ]
-      },
-      leads: {
-        create: [
-          { name: 'João Silva', phone: '11999999999', email: 'joao@construtora.com', city: 'São Paulo', message: 'Preciso de um gerador para amanhã, urgente.', status: 'NOVO' },
-          { name: 'Maria Souza', phone: '11988888888', city: 'Campinas', message: 'Orçamento para locação mensal.', status: 'CONTATO' },
-          { name: 'Carlos Santos', phone: '11977777777', email: 'carlos@eventos.com', city: 'Osasco', message: 'Qual o valor para final de semana?', status: 'PROPOSTA' }
-        ]
-      }
+    create: {
+      name: 'São Paulo',
+      uf: 'SP',
+      slug: 'sao-paulo',
     },
-  })
+  });
 
-  const empresa2 = await prisma.company.create({
-    data: {
-      name: 'TratorMax Pesados',
-      slug: 'tratormax-pesados',
-      about: 'Referência em máquinas pesadas na região Norte. Temos escavadeiras, pás carregadeiras e muito mais.',
-      city: 'Marabá',
-      state: 'PA',
-      logoUrl: 'https://placehold.co/150x150/FF9900/FFF?text=TM',
-      coverUrl: 'https://images.unsplash.com/photo-1574889241973-1fcfbf5fbe3d?q=80&w=2070&auto=format&fit=crop',
-      verified: true,
-      plan: 'ESSENTIAL',
-      rating: 4.7,
-      yearsInMarket: 5,
-    },
-  })
+  // 2. Cidades (Foco inicial: Sul do Pará e SP)
+  const citiesData = [
+    { name: 'Redenção', slug: 'redencao', stateId: para.id },
+    { name: 'Marabá', slug: 'maraba', stateId: para.id },
+    { name: 'Parauapebas', slug: 'parauapebas', stateId: para.id },
+    { name: 'Belém', slug: 'belem', stateId: para.id },
+    { name: 'São Paulo', slug: 'sao-paulo-sp', stateId: saoPaulo.id },
+    { name: 'Campinas', slug: 'campinas', stateId: saoPaulo.id },
+  ];
 
-  // 3. Criar Anúncios
-  await prisma.listing.create({
-    data: {
-      title: 'Gerador Silenciado 50kVA a Diesel',
-      slug: 'gerador-silenciado-50kva-diesel-sp',
-      shortDescription: 'Gerador cabinado super silenciado, ideal para eventos, hospitais e obras. Manutenção em dia e entrega imediata na grande SP.',
-      type: 'EQUIPMENT',
-      city: 'São Paulo',
-      state: 'SP',
-      priceOnRequest: true,
-      companyId: empresa1.id,
-      categoryId: catEnergia.id,
-    },
-  })
+  for (const city of citiesData) {
+    await prisma.city.upsert({
+      where: { slug: city.slug },
+      update: {},
+      create: city,
+    });
+  }
 
-  await prisma.listing.create({
-    data: {
-      title: 'Retroescavadeira Case 580N',
-      slug: 'retroescavadeira-case-580n-maraba',
-      shortDescription: 'Equipamento novo com operador. Ideal para terraplenagem e obras de grande porte.',
-      type: 'EQUIPMENT',
-      city: 'Marabá',
-      state: 'PA',
-      price: 250, // diária/hora dependendo do modelo de negócio (ex: R$250/h)
-      priceOnRequest: false,
-      companyId: empresa2.id,
-      categoryId: catConstrucao.id,
-    },
-  })
+  // 3. Categorias Base
+  const categoriesData = [
+    { name: 'Construção Civil', slug: 'construcao-civil', seoTitle: 'Aluguel de Máquinas para Construção Civil' },
+    { name: 'Agronegócio', slug: 'agronegocio', seoTitle: 'Equipamentos para Agronegócio' },
+    { name: 'Energia', slug: 'energia', seoTitle: 'Geradores de Energia' },
+    { name: 'Logística', slug: 'logistica', seoTitle: 'Empilhadeiras e Logística' },
+    { name: 'Mineração', slug: 'mineracao', seoTitle: 'Máquinas para Mineração' },
+  ];
 
-  console.log('Seed concluído com sucesso!')
+  for (const cat of categoriesData) {
+    await prisma.category.upsert({
+      where: { slug: cat.slug },
+      update: {},
+      create: { ...cat, active: true },
+    });
+  }
+
+  console.log('✅ Seed finalizado com sucesso!');
 }
 
 main()
   .catch((e) => {
-    console.error(e)
-    process.exit(1)
+    console.error(e);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });

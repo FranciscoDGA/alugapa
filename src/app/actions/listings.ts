@@ -27,7 +27,6 @@ export async function searchListings(query: string = "", city: string = "") {
       category: true
     },
     orderBy: [
-      { company: { plan: "desc" } }, // Planos mais altos primeiro (bÃ¡sico mock)
       { createdAt: "desc" }
     ]
   });

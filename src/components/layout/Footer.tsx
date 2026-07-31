@@ -21,15 +21,15 @@ export default function Footer() {
               A maior infraestrutura digital para locação de máquinas, equipamentos pesados e serviços especializados no Brasil.
             </p>
             <div className="flex items-center gap-4 pt-2">
-              <a href="#" className="bg-gray-800 p-2 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
+              <Link href="/contato" className="bg-gray-800 p-2 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
                 <MessageCircle size={20} />
-              </a>
-              <a href="#" className="bg-gray-800 p-2 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
+              </Link>
+              <Link href="/sobre" className="bg-gray-800 p-2 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
                 <Share2 size={20} />
-              </a>
-              <a href="#" className="bg-gray-800 p-2 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
+              </Link>
+              <Link href="/sobre" className="bg-gray-800 p-2 rounded-full hover:bg-blue-600 hover:text-white transition-colors">
                 <Globe size={20} />
-              </a>
+              </Link>
             </div>
           </div>
 

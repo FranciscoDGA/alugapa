@@ -1,0 +1,45 @@
+name: AlugaPA CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  build-and-test:
+    name: Build & Reliability Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Run Prisma Generate
+      run: npx prisma generate
+
+    - name: Run Linter
+      run: npm run lint
+      continue-on-error: true # No MVP não travamos o build por lint estético
+
+    - name: Type Checking
+      run: npx tsc --noEmit
+
+    - name: Production Build Simulation
+      run: npm run build
+      env:
+        # Passa um BD fake em memória (SQLite) para o build não falhar se precisar rodar queries de geração estática
+        DATABASE_URL: "file:./dev.db" 
+
+    - name: Notify Reliability Dashboard
+      if: always()
+      run: echo "Pipeline concluído. Atualizar Status no Reliability OS."

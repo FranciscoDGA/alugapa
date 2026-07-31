@@ -3,91 +3,871 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Company {
-  id             String    @id @default(uuid())
-  slug           String    @unique
-  name           String
-  cnpj           String?
-  about          String?   // Historia da empresa
-  city           String
-  state          String
-  logoUrl        String?
-  coverUrl       String?   // Banner
-  verified       Boolean   @default(false)
-  plan           String    @default("FREE") // FREE, ESSENTIAL, PRO, ENTERPRISE
-  rating         Float     @default(0)
-  yearsInMarket  Int       @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+// ----------------------------------------------------------------------------
+// Core Models (Company, Listing, Lead, Review, Category)
+// ----------------------------------------------------------------------------
 
-  listings       Listing[]
-  reviews        Review[]
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  phone     String?
+  avatarUrl String?
+  role      String   @default("USER") // USER, ADMIN, COMPANY_OWNER, COMPANY_MEMBER, SUPER_ADMIN, PLATFORM_ADMIN, MODERATOR, SUPPORT, FINANCIAL, MARKETING, AUDITOR
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyMembers CompanyMember[]
   leads          Lead[]
+  tickets        Ticket[]
+}
+
+model CompanyMember {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role      String   @default("MEMBER") // OWNER, ADMIN, OPERATOR, SALES, FINANCIAL, MEMBER
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([userId])
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  title     String
+  type      String // CNPJ, CONTRATO, CNH
+  url       String
+  verified  Boolean  @default(false)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Company {
+  id    String  @id @default(uuid())
+  slug  String  @unique
+  name  String
+  cnpj  String?
+  about String?
+
+  // Legacy string fields
+  city  String
+  state String
+
+  // New geographical relations
+  cityId   String?
+  cityRef  City?   @relation(fields: [cityId], references: [id])
+  stateId  String?
+  stateRef State?  @relation(fields: [stateId], references: [id])
+
+  logoUrl      String?
+  coverUrl     String?
+  bannerUrl    String?
+  website      String?
+  whatsapp     String?
+  email        String?
+  openingHours Json? // { "monday": { "open": "08:00", "close": "18:00" }, ... }
+  serviceAreas String[]
+  status       String   @default("ACTIVE") // ACTIVE, PENDING, SUSPENDED
+
+  verified      Boolean  @default(false)
+  rating        Float    @default(0)
+  yearsInMarket Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  listings  Listing[]
+  reviews   Review[]
+  leads     Lead[]
+  members   CompanyMember[]
+  documents Document[]
+  branches  CompanyBranch[]
+  aiContext AiContext?
+  tickets   Ticket[]
+
+  // Gamification (Growth OS)
+  points    Int     @default(0)
+  tier      String  @default("BRONZE") // BRONZE, PRATA, OURO, DIAMANTE, ELITE
+  isFounder Boolean @default(false)
+
+  // Referrals
+  referralsMade     Referral[] @relation("ReferrerCompany")
+  referralsReceived Referral[] @relation("ReferredCompany")
+
+  // Revenue OS (Billing Engine)
+  subscriptions Subscription[]
+  wallet        Wallet?
+
+  // Communication OS
+  notifications     Notification[]
+  messageLogs       MessageLog[]
+  preferences       CompanyPreference?
+  companyTrustScore CompanyTrustScore?
+  apiKeys           ApiKey[]
+  webhookEndpoints  WebhookEndpoint[]
+
+  // Expansion OS
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([slug])
+  @@index([cityId])
+  @@index([stateId])
+  @@index([status])
+}
+
+model CompanyBranch {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name   String // ex: "Matriz", "Filial Norte"
+  isMain Boolean @default(false)
+
+  zipCode      String?
+  street       String?
+  number       String?
+  complement   String?
+  neighborhood String?
+  city         String?
+  state        String?
+
+  phone String?
+  email String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model Review {
-  id             String    @id @default(uuid())
-  rating         Int
-  comment        String?
-  authorName     String
-  createdAt      DateTime  @default(now())
+  id         String   @id @default(uuid())
+  rating     Int
+  comment    String?
+  authorName String
+  createdAt  DateTime @default(now())
 
-  companyId      String
-  company        Company   @relation(fields: [companyId], references: [id])
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
 }
 
 model Category {
-  id          String    @id @default(uuid())
-  name        String
-  slug        String    @unique
-  icon        String?
-  
-  listings    Listing[]
+  id             String     @id @default(uuid())
+  name           String
+  slug           String     @unique
+  icon           String?
+  seoTitle       String?
+  seoDescription String?
+  active         Boolean    @default(true)
+  parentId       String?
+  parent         Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children       Category[] @relation("CategoryHierarchy")
+
+  listings Listing[]
+
+  @@index([slug])
+  @@index([parentId])
 }
 
 model Listing {
-  id               String    @id @default(uuid())
+  id               String  @id @default(uuid())
   title            String
-  slug             String    @unique
+  slug             String  @unique
   shortDescription String
   fullDescription  String?
-  type             String    // EQUIPMENT, SERVICE
-  city             String
-  state            String
-  price            Float?
-  priceOnRequest   Boolean   @default(false)
-  status           String    @default("ACTIVE") // ACTIVE, DRAFT, ARCHIVED
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  type             String // EQUIPMENT, SERVICE
 
-  companyId        String
-  company          Company   @relation(fields: [companyId], references: [id])
-  
-  categoryId       String
-  category         Category  @relation(fields: [categoryId], references: [id])
-  
-  leads            Lead[]
+  brand String?
+  model String?
+  year  Int?
+
+  // Legacy string fields
+  city  String
+  state String
+
+  // New geographical relations
+  cityId   String?
+  cityRef  City?   @relation(fields: [cityId], references: [id])
+  stateId  String?
+  stateRef State?  @relation(fields: [stateId], references: [id])
+
+  price          Float?
+  priceOnRequest Boolean @default(false)
+  priceType      String  @default("PER_DAY") // PER_HOUR, PER_DAY, PER_MONTH, FIXED
+  status         String  @default("ACTIVE")
+  featured       Boolean @default(false)
+  availability   String  @default("AVAILABLE") // AVAILABLE, RENTED, MAINTENANCE
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  leads     Lead[]
+  images    ListingImage[]
+  documents ListingDocument[]
+  events    ListingEvent[]
+  schedules ListingSchedule[]
+
+  // Expansion OS
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([slug])
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([cityId])
+  @@index([featured])
+  @@index([status])
+}
+
+model ListingImage {
+  id        String   @id @default(uuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([listingId])
+}
+
+model ListingDocument {
+  id        String   @id @default(uuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  title     String // ex: "Manual de Instruções", "Laudo Técnico"
+  type      String // ex: MANUAL, LAUDO, CERTIFICADO, OUTROS
+  url       String
+  createdAt DateTime @default(now())
+
+  @@index([listingId])
+}
+
+model ListingEvent {
+  id          String   @id @default(uuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  type        String // ex: STATUS_CHANGE, MAINTENANCE, INSPECTION
+  title       String
+  description String?
+  metadata    Json? // Optional data like cost, parts replaced, etc.
+  createdAt   DateTime @default(now())
+
+  @@index([listingId])
+}
+
+model ListingSchedule {
+  id        String  @id @default(uuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  type   String // BLOCK, MAINTENANCE, BOOKING
+  status String  @default("CONFIRMED") // CONFIRMED, CANCELLED
+  title  String? // ex: "Revisão dos 10k km"
+  notes  String?
+
+  startDate DateTime
+  endDate   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([startDate, endDate])
 }
 
 model Lead {
-  id               String    @id @default(uuid())
-  name             String
-  email            String?
-  phone            String
-  city             String?
-  message          String
-  status           String    @default("NOVO") // NOVO, CONTATO, PROPOSTA, NEGOCIACAO, FECHADO, PERDIDO
-  source           String    @default("ORGANICO") // ORGANICO, ADS, DIRETO
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              String    @id @default(uuid())
+  leadCode        String?   @unique
+  name            String
+  email           String?
+  phone           String
+  whatsapp        String?
+  companyName     String?
+  city            String?
+  state           String?
+  rentalStartDate DateTime?
+  rentalEndDate   DateTime?
+  quantity        Int?      @default(1)
+  estimatedValue  Float?
+  message         String
+  urgency         String?   @default("MÉDIA")
+  status          String    @default("NOVO")
+  priority        String?   @default("MÉDIA")
+  source          String    @default("ORGANICO")
+  channel         String?   @default("SITE")
+  assignedTo      String?
 
-  companyId        String
-  company          Company   @relation(fields: [companyId], references: [id])
+  // CRM & Sales OS
+  pipelineStage String @default("NOVO") // NOVO, QUALIFICADO, CONTATO, PROPOSTA, NEGOCIACAO, FECHADO, PERDIDO
+  score         Int    @default(0)
+  temperature   String @default("FRIO") // FRIO, MORNO, QUENTE, MUITO_QUENTE
 
-  listingId        String?
-  listing          Listing?  @relation(fields: [listingId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  events      LeadEvent[]
+  messages    LeadMessage[]
+  attachments LeadAttachment[]
+  notes       LeadNote[]
+  tasks       LeadTask[]
+
+  // Expansion OS
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+}
+
+model LeadMessage {
+  id            String    @id @default(uuid())
+  leadId        String
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  senderType    String // COMPANY, USER, SYSTEM
+  senderId      String // ID do user, company ou system
+  message       String
+  attachmentUrl String?
+  readAt        DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model LeadEvent {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      String // criado, visualizado, respondido, negociando, convertido, cancelado, perdido
+  title     String
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model LeadAttachment {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  url       String
+  name      String
+  size      Int?
+  type      String?
+  createdAt DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// SEO Engine Models (Organic Traffic OS)
+// ----------------------------------------------------------------------------
+
+model State {
+  id   String @id @default(uuid())
+  name String
+  uf   String @unique // ex: PA, MT
+  slug String @unique // ex: para, mato-grosso
+
+  cities    City[]
+  companies Company[]
+  listings  Listing[]
+  seoPages  SeoPage[]
+}
+
+model City {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique // ex: maraba, redencao
+
+  stateId String
+  state   State  @relation(fields: [stateId], references: [id])
+
+  companies Company[]
+  listings  Listing[]
+  seoPages  SeoPage[]
+}
+
+model SeoPage {
+  id          String  @id @default(uuid())
+  url         String  @unique // ex: /pa/redencao/retroescavadeiras
+  title       String
+  description String
+  h1          String
+  content     String? // Generated AI content
+  type        String // STATE, CITY, CATEGORY_CITY, COMPANY, EQUIPMENT, SERVICE, BLOG
+  indexed     Boolean @default(true)
+  performance Float? // Score opcional (Analytics Engine)
+
+  // Relações opcionais para gerar dados estruturados e links dinâmicos
+  stateId String?
+  state   State?  @relation(fields: [stateId], references: [id])
+  cityId  String?
+  city    City?   @relation(fields: [cityId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SeoTemplate {
+  id         String  @id @default(uuid())
+  type       String  @unique // ex: CATEGORY_CITY
+  titleTpl   String // ex: Aluguel de {{category}} em {{city}} | AlugaPA
+  descTpl    String
+  h1Tpl      String
+  contentTpl String?
+}
+
+model Faq {
+  id       String  @id @default(uuid())
+  question String
+  answer   String
+  category String // ex: GLOBAL, GERADORES, RETROESCAVADEIRAS
+  active   Boolean @default(true)
+}
+
+model Article {
+  id          String    @id @default(uuid())
+  title       String
+  slug        String    @unique
+  content     String
+  excerpt     String?
+  author      String?
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Keyword {
+  id         String   @id @default(uuid())
+  term       String   @unique
+  volume     Int      @default(0)
+  difficulty Int      @default(0)
+  intent     String   @default("TRANSACTIONAL")
+  createdAt  DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// Intelligence OS (AI Engine) Models
+// ----------------------------------------------------------------------------
+
+model AiLog {
+  id        String   @id @default(uuid())
+  prompt    String?
+  response  String?
+  provider  String   @default("openai")
+  modelName String   @default("gpt-4o-mini")
+  tokens    Int      @default(0)
+  cost      Float    @default(0)
+  latencyMs Int      @default(0)
+  module    String // ex: SEARCH, MODERATION, COMPANY_ADVISOR
+  createdAt DateTime @default(now())
+}
+
+model AiContext {
+  id        String   @id @default(uuid())
+  companyId String   @unique
+  company   Company  @relation(fields: [companyId], references: [id])
+  memory    String // Contexto operacional extraído ao longo do tempo (JSON stringificado)
+  updatedAt DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Growth Engine Models (Growth OS)
+// ----------------------------------------------------------------------------
+
+model Referral {
+  id         String   @id @default(uuid())
+  referrerId String
+  referrer   Company  @relation("ReferrerCompany", fields: [referrerId], references: [id])
+  referredId String
+  referred   Company  @relation("ReferredCompany", fields: [referredId], references: [id])
+  status     String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  reward     String? // Ex: "30_DAYS_FREE", "50_CREDITS"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model GrowthInsight {
+  id          String   @id @default(uuid())
+  type        String // CHURN_RISK, EXPANSION_ALERT, CROSS_SELL
+  title       String
+  description String
+  priority    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status      String   @default("NEW") // NEW, IN_PROGRESS, RESOLVED, IGNORED
+  targetId    String? // Pode referenciar uma CompanyId ou CityId dependendo do type
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Revenue OS (Billing Engine Models)
+// ----------------------------------------------------------------------------
+
+model Plan {
+  id               String   @id @default(uuid())
+  name             String   @unique // ex: STARTER, PROFESSIONAL, BUSINESS
+  priceMonthly     Float
+  priceYearly      Float
+  maxListings      Int      @default(3)
+  maxUsers         Int      @default(1)
+  aiLimits         Int      @default(0) // 0 = sem acesso, -1 = ilimitado, N = chamadas/mês
+  seoAdvanced      Boolean  @default(false)
+  verifiedBadge    Boolean  @default(false)
+  analyticsEnabled Boolean  @default(false)
+  apiAccess        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                    String   @id @default(uuid())
+  companyId             String
+  company               Company  @relation(fields: [companyId], references: [id])
+  planId                String
+  plan                  Plan     @relation(fields: [planId], references: [id])
+  status                String   @default("TRIAL") // TRIAL, ACTIVE, PAST_DUE, CANCELED, EXPIRED
+  cycle                 String   @default("MONTHLY") // MONTHLY, YEARLY
+  gatewaySubscriptionId String? // ID no Stripe, Asaas, etc.
+  gatewayName           String   @default("STRIPE")
+  currentPeriodStart    DateTime @default(now())
+  currentPeriodEnd      DateTime
+  cancelAtPeriodEnd     Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  invoices Invoice[]
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  amount         Float
+  currency       String        @default("BRL")
+  status         String        @default("PENDING") // PENDING, PAID, OVERDUE, VOID, REFUNDED
+  dueDate        DateTime
+  paidAt         DateTime?
+  invoicePdfUrl  String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  transactions Transaction[]
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+  amount        Float
+  currency      String   @default("BRL")
+  status        String // SUCCESS, FAILED, PENDING, REFUNDED
+  paymentMethod String // CREDIT_CARD, PIX, BOLETO
+  gatewayTxId   String? // ID da transação no Gateway
+  createdAt     DateTime @default(now())
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  companyId String   @unique
+  company   Company  @relation(fields: [companyId], references: [id])
+  balance   Float    @default(0) // Representado em Créditos (moeda virtual)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Coupon {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  type        String // PERCENTAGE, FIXED, FIRST_PAYMENT
+  value       Float
+  maxUses     Int? // Limite total de usos
+  currentUses Int       @default(0)
+  validUntil  DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// CRM & Lead Management (Sales OS)
+// ----------------------------------------------------------------------------
+
+// model LeadTimeline deleted as it was replaced by LeadEvent
+
+model LeadNote {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  content   String
+  author    String   @default("SYSTEM") // Nome do vendedor ou "AI_COPILOT"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LeadTask {
+  id          String    @id @default(uuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id])
+  title       String
+  type        String // CALL, EMAIL, MEETING, FOLLOW_UP
+  status      String    @default("PENDING") // PENDING, DONE, CANCELED
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Communication OS (Event Bus & Messaging)
+// ----------------------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  type      String // LEAD, SYSTEM, BILLING, AI_INSIGHT
+  title     String
+  content   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model MessageLog {
+  id           String   @id @default(uuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  channel      String // EMAIL, WHATSAPP, PUSH, SMS
+  status       String   @default("PENDING") // SENT, DELIVERED, FAILED, READ
+  subject      String?
+  content      String
+  recipient    String // numero ou email
+  eventId      String? // Id do evento que gerou a mensagem (ex: LEAD_CREATED)
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model CompanyPreference {
+  id            String   @id @default(uuid())
+  companyId     String   @unique
+  company       Company  @relation(fields: [companyId], references: [id])
+  emailOptIn    Boolean  @default(true)
+  whatsappOptIn Boolean  @default(true)
+  pushOptIn     Boolean  @default(false)
+  marketing     Boolean  @default(true)
+  aiInsights    Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+}
+
+model MessageTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  subject   String?
+  content   String // Suporta variaveis como {{nome}}, {{empresa}}
+  channel   String // EMAIL, WHATSAPP
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Discovery OS (Search Engine)
+// ----------------------------------------------------------------------------
+
+model SearchQueryLog {
+  id               String   @id @default(uuid())
+  rawQuery         String // O texto original digitado
+  intentCategory   String? // O que a IA identificou como Categoria
+  intentCity       String? // O que a IA identificou como Cidade
+  resultsCount     Int      @default(0) // 0 significa busca vazia
+  clickedListingId String? // Se clicou em algum anúncio
+  createdAt        DateTime @default(now())
+}
+
+model UserFavorite {
+  id        String   @id @default(uuid())
+  userId    String // ID do usuário visitante logado
+  targetId  String // Pode ser CompanyId, ListingId, CategoryId
+  type      String // COMPANY, LISTING, CATEGORY
+  createdAt DateTime @default(now())
+
+  @@unique([userId, targetId]) // Evita favoritos duplicados
+}
+
+// ----------------------------------------------------------------------------
+// Recommendation OS (Intelligence Experience)
+// ----------------------------------------------------------------------------
+
+model UserBehaviorLog {
+  id        String   @id @default(uuid())
+  userId    String // Session ou ID logado
+  action    String // VIEW_LISTING, SEARCH, CLICK_CATEGORY
+  targetId  String? // Id do anuncio ou categoria
+  metadata  String? // JSON com detalhes (tempo gasto, etc)
+  createdAt DateTime @default(now())
+}
+
+model OpportunityEdge {
+  id               String   @id @default(uuid())
+  sourceCategoryId String
+  targetCategoryId String
+  weight           Float    @default(0.5) // Força da conexão
+  reason           String? // Ex: "Usuários que alugam X também buscam Y"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([sourceCategoryId, targetCategoryId])
+}
+
+// ----------------------------------------------------------------------------
+// Analytics OS (Intelligence Engine)
+// ----------------------------------------------------------------------------
+
+model PlatformEvent {
+  id        String   @id @default(uuid())
+  type      String // LEAD_CREATED, SEARCH_NO_RESULTS, UPGRADE_PLAN, CATEGORY_CLICK
+  userId    String? // Pode ser nulo se for visitante anônimo
+  companyId String? // Relevante se o evento aconteceu no perfil de uma empresa
+  metadata  String? // JSON com as métricas ou detalhes específicos do evento
+  createdAt DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// Trust OS (Security & Compliance)
+// ----------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String // USER_LOGIN, COMPANY_EDIT, PLAN_CANCEL, EXPORT_LEADS
+  actorId   String // Quem executou a ação
+  targetId  String? // Id do recurso modificado (ex: companyId)
+  ipAddress String?
+  details   String? // JSON com as alterações ou metadados
+  createdAt DateTime @default(now())
+}
+
+model CompanyTrustScore {
+  id                String   @id @default(uuid())
+  companyId         String   @unique
+  company           Company  @relation(fields: [companyId], references: [id])
+  score             Float    @default(50.0) // 0 a 100
+  documentsVerified Boolean  @default(false)
+  responseRate      Float    @default(0.0)
+  strikes           Int      @default(0) // Punições ou infrações
+  updatedAt         DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Platform OS (Integrações e Webhooks)
+// ----------------------------------------------------------------------------
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  key       String    @unique // Hash do token para requisições seguras
+  name      String // Ex: "Zapier Vendas", "CRM Interno"
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model WebhookEndpoint {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  url       String // URL de destino
+  secret    String // Segredo para HMAC
+  events    String // JSON array de eventos: ["LEAD_CREATED", "PAYMENT_SUCCEEDED"]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Expansion OS (Multi-Tenant & Franchises)
+// ----------------------------------------------------------------------------
+
+model Tenant {
+  id         String   @id @default(uuid())
+  slug       String   @unique // ex: "sp", "pa", "global"
+  name       String // ex: "AlugaSP", "AlugaPA"
+  domain     String?  @unique // ex: "sp.alugapa.com.br"
+  themeColor String   @default("blue")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  companies Company[]
+  listings  Listing[]
+  leads     Lead[]
+}
+
+// ----------------------------------------------------------------------------
+// Autonomous Platform OS (AIOps)
+// ----------------------------------------------------------------------------
+
+model AiInsight {
+  id              String   @id @default(uuid())
+  category        String // BUSINESS, INFRA, SEO, CRM, SECURITY
+  title           String
+  description     String
+  suggestedAction String?
+  confidence      Float    @default(0.9)
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, AUTO_EXECUTED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// Support OS (Helpdesk Engine)
+// ----------------------------------------------------------------------------
+
+model Ticket {
+  id          String @id @default(uuid())
+  subject     String
+  description String
+  status      String @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  priority    String @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  category    String @default("GENERAL") // GENERAL, BILLING, TECHNICAL, MODERATION
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  assignedTo String? // Id do admin responsável
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages TicketMessage[]
+}
+
+model TicketMessage {
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  senderId   String // userId, adminId ou SYSTEM
+  senderType String // USER, ADMIN, SYSTEM
+  message    String
+
+  createdAt DateTime @default(now())
 }

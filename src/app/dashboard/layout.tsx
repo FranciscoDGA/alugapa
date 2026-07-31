@@ -13,7 +13,9 @@ import {
   Menu, 
   X,
   LogOut,
-  Sparkles
+  Sparkles,
+  Building2,
+  Calendar
 } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -22,8 +24,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { name: "Visão Geral", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Perfil da Empresa", href: "/dashboard/empresa", icon: Building2 },
     { name: "Leads", href: "/dashboard/leads", icon: Users },
     { name: "Meu Catálogo", href: "/dashboard/catalogo", icon: Package },
+    { name: "Agenda", href: "/dashboard/agenda", icon: Calendar },
+    { name: "Equipe", href: "/dashboard/equipe", icon: Users },
     { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
     { name: "Configurações", href: "/dashboard/configuracoes", icon: Settings },
   ];
@@ -54,7 +59,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        {/* Workspace Info (Mocked) */}
+        {/* Workspace Info (To be connected to Auth) */}
         <div className="p-6 border-b border-slate-800">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
